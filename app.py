@@ -19,15 +19,12 @@ def teardown_request(f):
     g.bd.close()
 
 @app.route("/")
-def blog():
+def exibir_posts():
     sql = "SELECT titulo, texto, data_criacao FROM posts ORDER BY id DESC"
 
     resultado = g.bd.execute(sql)
 
-    post = [{"titulo": "Meu titulo4", "texto": "Meu texto", "data_criacao":"27/03/2024"},
-             {"titulo": "Meu titulo2", "texto": "Meu texto2", "data_criacao":"26/03/2024"}]
-
-    #post = []
+    post = []
     for titulo, texto, data_criacao in resultado.fetchall():
         post.append({
             "titulo":titulo, 
@@ -36,10 +33,33 @@ def blog():
            })
     return render_template("exibir_posts.html", post=post)
 
-@app.route("/login",  methods=["POST", "GET"])
+@app.route("/inserir", methods= ["POST", "GET"])
+def inserir():
+    if not session.get('logado'):
+        abort(401)
+    titulo = request.form.get('titulo')
+    texto = request.form.get('texto')
+    sql = "INSERT INTO posts (titulo, texto) VALUES (?, ?)"
+    g.bd.execute(sql,[titulo, texto])
+    g.bd.commit()
+    flash("Novo post inserido")
+    return redirect(url_for('exibir_posts'))
+
+
+@app.route("/login",  methods= ["POST", "GET"])
 def login():
-    return render_template("login.html")
+    erro = None
+    if(request.method == "POST"):
+        if request.form['username'] == "Ocean" and request.form['password'] == "ocean1234":  
+            session['logado']  = True 
+            flash("Usuário logado com sucesso!" + request.form['username']) 
+            return redirect(url_for('exibir_posts'))
+        erro="Usuário ou senha incorretos"    
+    return render_template("login.html", erro=erro)
 
 @app.route("/logout")
 def logout():
-    return render_template("logout.html")
+    session.pop('logado', None)
+
+    flash("Logout efetuado com sucesso")
+    return redirect(url_for('exibir_posts'))
